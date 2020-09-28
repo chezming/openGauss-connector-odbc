@@ -105,7 +105,7 @@ function build_component()
 
     cp ./third_party/unixodbc/install_comm/unixODBC-2.3.6/lib/libodbcinst* ${LOCAL_DIR}/lib
 
-    tar -czvf openGauss-1.0.0-ODBC.tar.gz ./lib ./odbc
+    tar -czvf openGauss-1.0.1-ODBC.tar.gz ./lib ./odbc
     
     rm -rf ${LOCAL_DIR}/lib
 
