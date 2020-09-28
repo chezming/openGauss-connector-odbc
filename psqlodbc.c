@@ -26,13 +26,13 @@
 
 #ifdef WIN32
 #include "loadlib.h"
-#define DEF_GS_VERSION "openGauss 1.0.0"
+#define DEF_GS_VERSION "openGauss 1.0.1"
 #else
 #include <libgen.h>
 #endif
 
 static int	exepgm = 0;
-const char *odbcVersionString = "openGauss 1.0.0";
+const char *odbcVersionString = "openGauss 1.0.1";
 BOOL isMsAccess(void) {return 1 == exepgm;}
 BOOL isMsQuery(void) {return 2 == exepgm;}
 BOOL isSqlServr(void) {return 3 == exepgm;}
