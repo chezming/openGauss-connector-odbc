@@ -2968,7 +2968,7 @@ char* generate_conninfo_URL(ConnInfo* ci, int host_number, int port_number)
             ci->username, ci->password, ci->server, ci->port, ci->database);
     } else if (host_number > 1 && port_number == 1) {
         //切割ci->server多ip，分别存储在server_ip数组
-        char server_ip[host_number][256] = {0};
+        char server_ip[host_number][256];
         int host_count = 0;
         int slicing;
         char* temp_host_addr = temp_host;
@@ -2992,11 +2992,12 @@ char* generate_conninfo_URL(ConnInfo* ci, int host_number, int port_number)
             strcat(temp_URL, ",");
         }
         int length = strlen(temp_URL);
-        temp_URL[length - 1] = '?';
-        strcat(temp_URL, "target_session_attrs=read-write");
+        temp_URL[length - 1] = '/';
+		strcat(temp_URL, ci->database);
+        strcat(temp_URL, "?target_session_attrs=read-write");
     } else if (host_number == 1 && port_number >1) {
         //切割ci->port多port，分别存储在multiple_port数组
-        char multiple_port[port_number][256] = {0};
+        char multiple_port[port_number][256];
         int port_count = 0;
         int slicing;
         char* temp_port_addr = temp_port;
@@ -3020,11 +3021,12 @@ char* generate_conninfo_URL(ConnInfo* ci, int host_number, int port_number)
             strcat(temp_URL, ",");
         }
         int length = strlen(temp_URL);
-        temp_URL[length - 1] = '?';
-        strcat(temp_URL, "target_session_attrs=read-write");
+        temp_URL[length - 1] = '/';
+		strcat(temp_URL, ci->database);
+        strcat(temp_URL, "?target_session_attrs=read-write");
     } else if (host_number > 1 && port_number > 1) {
         //切割ci->server多ip，分别存储在server_ip数组
-        char server_ip[host_number][256] = {0};
+        char server_ip[host_number][256];
         int host_count = 0;
         int slicing_host;
         char* temp_host_addr = temp_host;
@@ -3040,7 +3042,7 @@ char* generate_conninfo_URL(ConnInfo* ci, int host_number, int port_number)
             }
         }
         //切割ci->port多port，分别存储在multiple_port数组
-        char multiple_port[port_number][256] = {0};
+        char multiple_port[port_number][256];
         int port_count = 0;
         int slicing_port;
         char* temp_port_addr = temp_port;
@@ -3064,8 +3066,9 @@ char* generate_conninfo_URL(ConnInfo* ci, int host_number, int port_number)
             strcat(temp_URL, ",");
         }
         int length = strlen(temp_URL);
-        temp_URL[length - 1] = '?';
-        strcat(temp_URL, "target_session_attrs=read-write");
+        temp_URL[length - 1] = '/';
+		strcat(temp_URL, ci->database);
+        strcat(temp_URL, "?target_session_attrs=read-write");
     }
     conninfo_URL = strdup(temp_URL); //分配conninfo_URL空间地址并拷贝字符串
     return conninfo_URL;
@@ -3113,6 +3116,7 @@ LIBPQ_connect(ConnectionClass *self)
 	URL = generate_conninfo_URL(ci, host_number, port_number);
 
 	if (host_number > 1 || port_number > 1) {
+		MYLOG(0, "connecting to the database using URL: %s\n", URL);
 		pqconn = PQconnectdb(URL);
 	} else {
 		/* Build arrays of keywords & values, for PQconnectDBParams */
