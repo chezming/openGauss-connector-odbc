@@ -3091,8 +3091,8 @@ LIBPQ_connect(ConnectionClass *self)
 	char		*errmsg = NULL;
 	char		local_conninfo[8192];
 	int 		host_number = 1;
-    int 		port_number = 1;
-    char* 		URL = NULL;
+	int 		port_number = 1;
+	char* 		URL = NULL;
 	
 	MYLOG(0, "connecting to the database using %s as the server and pqopt={%s}\n", self->connInfo.server, SAFE_NAME(ci->pqopt));
 
@@ -3109,8 +3109,8 @@ LIBPQ_connect(ConnectionClass *self)
 	}
 	/* multiple_hostip or multiple_port from DSN */
 	host_number = multiple_host_number(ci);
-    port_number = multilple_port_number(ci);
-    URL = generate_conninfo_URL(ci, host_number, port_number);
+	port_number = multilple_port_number(ci);
+	URL = generate_conninfo_URL(ci, host_number, port_number);
 
 	if (host_number > 1 || port_number > 1) {
 		pqconn = PQconnectdb(URL);
