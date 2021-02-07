@@ -3118,6 +3118,7 @@ LIBPQ_connect(ConnectionClass *self)
 	if (host_number > 1 || port_number > 1) {
 		MYLOG(0, "connecting to the database using URL: %s\n", URL);
 		pqconn = PQconnectdb(URL);
+		free(URL);
 	} else {
 		/* Build arrays of keywords & values, for PQconnectDBParams */
 		cnt = 0;
