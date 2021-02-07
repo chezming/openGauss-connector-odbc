@@ -2885,6 +2885,195 @@ static void CC_getOSUser(char *username, int usernameLen)
 #endif
 }
 
+int multiple_host_number(ConnInfo* ci)
+{
+    int host_number = 1;
+    char temp_host[256] = {0};
+    strcpy(temp_host, ci->server);
+    bool contain_comma = false;
+    char* temp = temp_host;
+    //遍历temp,判断是否含有逗号
+    while (*temp != '\0')
+    {
+        if(*temp == ',') {
+            contain_comma = true;
+            break;
+        }
+        temp++;
+    }
+    //有多HostIp时，计算Host个数host_number
+    if(contain_comma) {
+        for(char* temp_h = temp_host; *temp_h != '\0'; temp_h++) {
+            if (*temp_h == ',') {
+                host_number++;
+            }
+        }
+        return host_number;
+    } else {
+        return 1;
+    }
+}
+
+int multilple_port_number(ConnInfo* ci)
+{
+    int port_number = 1;
+    char temp_port[256] = {0};
+    strcpy(temp_port, ci->port);
+    bool contain_comma = false;
+    char* temp = temp_port;
+    //遍历temp,判断是否含有逗号
+    while (*temp != '\0')
+    {
+        if(*temp == ',') {
+            contain_comma = true;
+            break;
+        }
+        temp++;
+    }
+    //有多Port时，计算Port个数port_number
+    if(contain_comma) {
+        for(char* temp_h = temp_port; *temp_h != '\0'; temp_h++) {
+            if (*temp_h == ',') {
+                port_number++;
+            }
+        }
+        return port_number;
+    } else {
+        return 1;
+    }
+}
+
+/* 
+ * 不同HostIP,同一Port的拼接conninfo_URL
+ * 同一个HostIP,不同Port的拼接conninfo_URL
+ * 不同HostIp,不同Port的拼接conninfo_URL,Port顺序要与HostIP顺序一一对应
+ */
+char* generate_conninfo_URL(ConnInfo* ci, int host_number, int port_number)
+{
+    char* conninfo_URL = NULL;
+    char temp_host[256] = {0};
+    strcpy(temp_host, ci->server);
+    char temp_port[256] = {0};
+    strcpy(temp_port, ci->port);
+    char temp_URL[2000] = {0};
+    /*
+     * 拼接四种情况的URL字符串
+     * 1. host_number=1, port_number=1
+     * 2. host_number=n, port_number=1
+     * 3. host_number=1, port_number=m
+     * 4. host_number=n, port_number=m
+     */
+    if (host_number ==1 && port_number == 1) {
+        (void)snprintf(temp_URL, sizeof(temp_URL), "postgres://%s:%s@%s:%s/%s?target_session_attrs=read-write",
+            ci->username, ci->password, ci->server, ci->port, ci->database);
+    } else if (host_number > 1 && port_number == 1) {
+        //切割ci->server多ip，分别存储在server_ip数组
+        char server_ip[host_number][256];
+        int host_count = 0;
+        int slicing;
+        char* temp_host_addr = temp_host;
+        strcpy(server_ip[host_count], temp_host);
+        for (char* temp_h = temp_host; *temp_h != '\0'; temp_h++) {
+            if (*temp_h == ',') {
+                *temp_h = '\0';
+                slicing = temp_h - temp_host_addr;
+                temp_host_addr = temp_h + 1;
+                server_ip[host_count][slicing] = '\0'; 
+                host_count++;
+                strcpy(server_ip[host_count], temp_h + 1);
+            }
+        }
+        (void)snprintf(temp_URL, sizeof(temp_URL), "postgres://%s:%s@", ci->username, ci->password);
+        //多个server_ip地址拼接
+        for (int temp = 0; temp < host_number; temp++) {
+            strcat(temp_URL, server_ip[temp]);
+            strcat(temp_URL, ":");
+            strcat(temp_URL, ci->port);
+            strcat(temp_URL, ",");
+        }
+        int length = strlen(temp_URL);
+        temp_URL[length - 1] = '/';
+		strcat(temp_URL, ci->database);
+        strcat(temp_URL, "?target_session_attrs=read-write");
+    } else if (host_number == 1 && port_number >1) {
+        //切割ci->port多port，分别存储在multiple_port数组
+        char multiple_port[port_number][256];
+        int port_count = 0;
+        int slicing;
+        char* temp_port_addr = temp_port;
+        strcpy(multiple_port[port_count], temp_port);
+        for (char* temp_h = temp_port; *temp_h != '\0'; temp_h++) {
+            if (*temp_h == ',') {
+                *temp_h = '\0';
+                slicing = temp_h - temp_port_addr;
+                temp_port_addr = temp_h + 1;
+                multiple_port[port_count][slicing] = '\0'; 
+                port_count++;
+                strcpy(multiple_port[port_count], temp_h + 1);
+            }
+        }
+        (void)snprintf(temp_URL, sizeof(temp_URL), "postgres://%s:%s@", ci->username, ci->password);
+        //多个multiple_port地址拼接
+        for (int temp = 0; temp < port_number; temp++) {
+            strcat(temp_URL, ci->server);
+            strcat(temp_URL, ":");
+            strcat(temp_URL, multiple_port[temp]);
+            strcat(temp_URL, ",");
+        }
+        int length = strlen(temp_URL);
+        temp_URL[length - 1] = '/';
+		strcat(temp_URL, ci->database);
+        strcat(temp_URL, "?target_session_attrs=read-write");
+    } else if (host_number > 1 && port_number > 1) {
+        //切割ci->server多ip，分别存储在server_ip数组
+        char server_ip[host_number][256];
+        int host_count = 0;
+        int slicing_host;
+        char* temp_host_addr = temp_host;
+        strcpy(server_ip[host_count], temp_host);
+        for (char* temp_h = temp_host; *temp_h != '\0'; temp_h++) {
+            if (*temp_h == ',') {
+                *temp_h = '\0';
+                slicing_host = temp_h - temp_host_addr;
+                temp_host_addr = temp_h + 1;
+                server_ip[host_count][slicing_host] = '\0'; 
+                host_count++;
+                strcpy(server_ip[host_count], temp_h + 1);
+            }
+        }
+        //切割ci->port多port，分别存储在multiple_port数组
+        char multiple_port[port_number][256];
+        int port_count = 0;
+        int slicing_port;
+        char* temp_port_addr = temp_port;
+        strcpy(multiple_port[port_count], temp_port);
+        for (char* temp_h = temp_port; *temp_h != '\0'; temp_h++) {
+            if (*temp_h == ',') {
+                *temp_h = '\0';
+                slicing_port = temp_h - temp_port_addr;
+                temp_port_addr = temp_h + 1;
+                multiple_port[port_count][slicing_port] = '\0'; 
+                port_count++;
+                strcpy(multiple_port[port_count], temp_h + 1);
+            }
+        }
+        (void)snprintf(temp_URL, sizeof(temp_URL), "postgres://%s:%s@", ci->username, ci->password);
+        //多个multiple_host和multiple_port地址拼接,由于多ip与多port顺序一一对应，即host_nunber==port_number
+        for (int temp = 0; temp < host_number; temp++) {
+            strcat(temp_URL, server_ip[temp]);
+            strcat(temp_URL, ":");
+            strcat(temp_URL, multiple_port[temp]);
+            strcat(temp_URL, ",");
+        }
+        int length = strlen(temp_URL);
+        temp_URL[length - 1] = '/';
+		strcat(temp_URL, ci->database);
+        strcat(temp_URL, "?target_session_attrs=read-write");
+    }
+    conninfo_URL = strdup(temp_URL); //分配conninfo_URL空间地址并拷贝字符串
+    return conninfo_URL;
+}
+
 #define        PROTOCOL3_OPTS_MAX      30
 
 static int
@@ -2904,6 +3093,9 @@ LIBPQ_connect(ConnectionClass *self)
 	char		keepalive_interval_str[20];
 	char		*errmsg = NULL;
 	char		local_conninfo[8192];
+	int 		host_number = 1;
+	int 		port_number = 1;
+	char* 		URL = NULL;
 	
 	MYLOG(0, "connecting to the database using %s as the server and pqopt={%s}\n", self->connInfo.server, SAFE_NAME(ci->pqopt));
 
@@ -2918,133 +3110,144 @@ LIBPQ_connect(ConnectionClass *self)
 		CC_set_error(self, CONN_OPENDB_ERROR, emsg, func);
 		goto cleanup;
 	}
-	/* Build arrays of keywords & values, for PQconnectDBParams */
-	cnt = 0;
-	if (ci->server[0])
-	{
-		opts[cnt] = "host";		vals[cnt++] = ci->server;
-	}
-	if (ci->port[0])
-	{
-		opts[cnt] = "port";		vals[cnt++] = ci->port;
-	}
-	if (ci->database[0])
-	{
-		opts[cnt] = "dbname";	vals[cnt++] = ci->database;
-	}
-	if (ci->username[0])
-	{
-		opts[cnt] = "user";		vals[cnt++] = ci->username;
-	}
-	switch (ci->sslmode[0])
-	{
-		case '\0':
-			break;
-		case SSLLBYTE_VERIFY:
-			opts[cnt] = "sslmode";
-			switch (ci->sslmode[1])
-			{
-				case 'f':
-					vals[cnt++] = SSLMODE_VERIFY_FULL;
-					break;
-				case 'c':
-					vals[cnt++] = SSLMODE_VERIFY_CA;
-					break;
-				default:
-					vals[cnt++] = ci->sslmode;
-			}
-			break;
-		default:
-			opts[cnt] = "sslmode";
-			vals[cnt++] = ci->sslmode;
-	}
-	if (NAME_IS_VALID(ci->password))
-	{
-		opts[cnt] = "password";	vals[cnt++] = SAFE_NAME(ci->password);
-	}
-	if (ci->disable_keepalive)
-	{
-		opts[cnt] = "keepalives";	vals[cnt++] = "0";
-	}
-	if (self->login_timeout > 0)
-	{
-		SPRINTF_FIXED(login_timeout_str, "%u", (unsigned int) self->login_timeout);
-		opts[cnt] = "connect_timeout";	vals[cnt++] = login_timeout_str;
-	}
-	if (self->connInfo.keepalive_idle > 0)
-	{
-		ITOA_FIXED(keepalive_idle_str, self->connInfo.keepalive_idle);
-		opts[cnt] = "keepalives_idle";	vals[cnt++] = keepalive_idle_str;
-	}
-	if (self->connInfo.keepalive_interval > 0)
-	{
-		ITOA_FIXED(keepalive_interval_str, self->connInfo.keepalive_interval);
-		opts[cnt] = "keepalives_interval";	vals[cnt++] = keepalive_interval_str;
-	}
-	if ((odbcVersionString != NULL) && (odbcVersionString[0] != '\0'))
-	{
-		if (self->connInfo.connection_extra_info > 0)
+	/* multiple_hostip or multiple_port from DSN */
+	host_number = multiple_host_number(ci);
+	port_number = multilple_port_number(ci);
+	URL = generate_conninfo_URL(ci, host_number, port_number);
+
+	if (host_number > 1 || port_number > 1) {
+		MYLOG(0, "connecting to the database using URL: %s\n", URL);
+		pqconn = PQconnectdb(URL);
+		free(URL);
+	} else {
+		/* Build arrays of keywords & values, for PQconnectDBParams */
+		cnt = 0;
+		if (ci->server[0])
 		{
-			char libpath[4096] = {'\0'};
-			char username[128] = {'\0'};
-
-			(void)CC_getLibpath(libpath, sizeof(libpath));
-			(void)CC_getOSUser(username, sizeof(username));
-
-			snprintf(local_conninfo, sizeof(local_conninfo),
-					"{\"driver_name\":\"ODBC\",\"driver_version\":\"%s\",\"driver_path\":\"%s\",\"os_user\":\"%s\"}", 
-					odbcVersionString, libpath, username);
+			opts[cnt] = "host";		vals[cnt++] = ci->server;
 		}
-		else
+		if (ci->port[0])
 		{
-			snprintf(local_conninfo, sizeof(local_conninfo), 
-					"{\"driver_name\":\"ODBC\",\"driver_version\":\"%s\"}", 
-					odbcVersionString);
+			opts[cnt] = "port";		vals[cnt++] = ci->port;
 		}
-		opts[cnt] = "connection_info";	vals[cnt++] = local_conninfo;
-	}
-	if (conninfoOption != NULL)
-	{
-		const char *keyword, *val;
-		int j;
-
-		for (i = 0, pqopt = conninfoOption; (keyword = pqopt->keyword) != NULL; i++, pqopt++)
+		if (ci->database[0])
 		{
-			if ((val = pqopt->val) != NULL)
-			{
-				for (j = 0; j < cnt; j++)
+			opts[cnt] = "dbname";	vals[cnt++] = ci->database;
+		}
+		if (ci->username[0])
+		{
+			opts[cnt] = "user";		vals[cnt++] = ci->username;
+		}
+		switch (ci->sslmode[0])
+		{
+			case '\0':
+				break;
+			case SSLLBYTE_VERIFY:
+				opts[cnt] = "sslmode";
+				switch (ci->sslmode[1])
 				{
-					if (stricmp(opts[j], keyword) == 0)
-					{
-						char emsg[100];
+					case 'f':
+						vals[cnt++] = SSLMODE_VERIFY_FULL;
+						break;
+					case 'c':
+						vals[cnt++] = SSLMODE_VERIFY_CA;
+						break;
+					default:
+						vals[cnt++] = ci->sslmode;
+				}
+				break;
+			default:
+				opts[cnt] = "sslmode";
+				vals[cnt++] = ci->sslmode;
+		}
+		if (NAME_IS_VALID(ci->password))
+		{
+			opts[cnt] = "password";	vals[cnt++] = SAFE_NAME(ci->password);
+		}
+		if (ci->disable_keepalive)
+		{
+			opts[cnt] = "keepalives";	vals[cnt++] = "0";
+		}
+		if (self->login_timeout > 0)
+		{
+			SPRINTF_FIXED(login_timeout_str, "%u", (unsigned int) self->login_timeout);
+			opts[cnt] = "connect_timeout";	vals[cnt++] = login_timeout_str;
+		}
+		if (self->connInfo.keepalive_idle > 0)
+		{
+			ITOA_FIXED(keepalive_idle_str, self->connInfo.keepalive_idle);
+			opts[cnt] = "keepalives_idle";	vals[cnt++] = keepalive_idle_str;
+		}
+		if (self->connInfo.keepalive_interval > 0)
+		{
+			ITOA_FIXED(keepalive_interval_str, self->connInfo.keepalive_interval);
+			opts[cnt] = "keepalives_interval";	vals[cnt++] = keepalive_interval_str;
+		}
+		if ((odbcVersionString != NULL) && (odbcVersionString[0] != '\0'))
+		{
+			if (self->connInfo.connection_extra_info > 0)
+			{
+				char libpath[4096] = {'\0'};
+				char username[128] = {'\0'};
 
-						if (vals[j] != NULL && strcmp(vals[j], val) == 0)
-							continue;
-						SPRINTF_FIXED(emsg, "%s parameter in pqopt option conflicts with other ordinary option", keyword);
-						CC_set_error(self, CONN_OPENDB_ERROR, emsg, func);
-						goto cleanup;
+				(void)CC_getLibpath(libpath, sizeof(libpath));
+				(void)CC_getOSUser(username, sizeof(username));
+
+				snprintf(local_conninfo, sizeof(local_conninfo),
+						"{\"driver_name\":\"ODBC\",\"driver_version\":\"%s\",\"driver_path\":\"%s\",\"os_user\":\"%s\"}", 
+						odbcVersionString, libpath, username);
+			}
+			else
+			{
+				snprintf(local_conninfo, sizeof(local_conninfo), 
+						"{\"driver_name\":\"ODBC\",\"driver_version\":\"%s\"}", 
+						odbcVersionString);
+			}
+			opts[cnt] = "connection_info";	vals[cnt++] = local_conninfo;
+		}
+		if (conninfoOption != NULL)
+		{
+			const char *keyword, *val;
+			int j;
+
+			for (i = 0, pqopt = conninfoOption; (keyword = pqopt->keyword) != NULL; i++, pqopt++)
+			{
+				if ((val = pqopt->val) != NULL)
+				{
+					for (j = 0; j < cnt; j++)
+					{
+						if (stricmp(opts[j], keyword) == 0)
+						{
+							char emsg[100];
+
+							if (vals[j] != NULL && strcmp(vals[j], val) == 0)
+								continue;
+							SPRINTF_FIXED(emsg, "%s parameter in pqopt option conflicts with other ordinary option", keyword);
+							CC_set_error(self, CONN_OPENDB_ERROR, emsg, func);
+							goto cleanup;
+						}
+					}
+					if (j >= cnt && cnt < PROTOCOL3_OPTS_MAX - 1)
+					{
+						opts[cnt] = keyword; vals[cnt++] = val;
 					}
 				}
-				if (j >= cnt && cnt < PROTOCOL3_OPTS_MAX - 1)
-				{
-					opts[cnt] = keyword; vals[cnt++] = val;
-				}
 			}
 		}
-	}
-	opts[cnt] = vals[cnt] = NULL;
-	/* Ok, we're all set to connect */
+		opts[cnt] = vals[cnt] = NULL;
+		/* Ok, we're all set to connect */
 
-	if (get_qlog() > 0 || get_mylog() > 0)
-	{
-		const char **popt, **pval;
+		if (get_qlog() > 0 || get_mylog() > 0)
+		{
+			const char **popt, **pval;
 
-		QLOG(0, "PQconnectdbParams:");
-		for (popt = opts, pval = vals; *popt; popt++, pval++)
-			QPRINTF(0, " %s='%s'", *popt, *pval);
-		QPRINTF(0, "\n"); 
+			QLOG(0, "PQconnectdbParams:");
+			for (popt = opts, pval = vals; *popt; popt++, pval++)
+				QPRINTF(0, " %s='%s'", *popt, *pval);
+			QPRINTF(0, "\n"); 
+		}
+		pqconn = PQconnectdbParams(opts, vals, FALSE);
 	}
-	pqconn = PQconnectdbParams(opts, vals, FALSE);
 	if (!pqconn)
 	{
 		CC_set_error(self, CONN_OPENDB_ERROR, "PQconnectdb error", func);
