@@ -54,6 +54,9 @@ static const struct
 	,{
 		STMT_TYPE_UPDATE, "UPDATE"
 	}
+ 	,{
+		STMT_TYPE_MERGE, "MERGE"
+	}
 	,{
 		STMT_TYPE_DELETE, "DELETE"
 	}
@@ -3289,6 +3292,7 @@ BOOL SC_CanUseBatchProto(const StatementClass *self)
 
 	if (st == STMT_TYPE_INSERT ||
 		st == STMT_TYPE_UPDATE ||
+        st == STMT_TYPE_MERGE  ||
 		st == STMT_TYPE_DELETE)
 		return TRUE;
 
