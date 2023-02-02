@@ -1,5 +1,5 @@
 /*
-test: ²âÊÔ½Ó¿ÚSQLGetstmtAttr£¬
+test: ï¿½ï¿½ï¿½Ô½Ó¿ï¿½SQLGetstmtAttrï¿½ï¿½
 */
 #include <stdio.h>
 #include <sql.h>
@@ -85,6 +85,17 @@ int main(int argc,char *argv[])
 	}
 	// SQLGetEnvtAttr
 SQLINTEGER cursor_hold;
+
+  //abnormal test
+  rc = SQLGetStmtAttr( NULL, SQL_ATTR_MAX_LENGTH, &cursor_hold, 0, NULL );
+  printf("The first argument is null, and the result is:%d\n", rc);
+  rc = SQLGetStmtAttr( hstmt, SQL_ATTR_MAX_LENGTH, NULL, 0, NULL );
+  printf("The third argument is null, and the result is:%d\n", rc);
+  rc = SQLGetStmtAttr( NULL, SQL_ATTR_MAX_ROWS, &cursor_hold, 0, NULL );
+  printf("The first argument is null, and the result is:%d\n", rc);
+  rc = SQLGetStmtAttr( hstmt, SQL_ATTR_MAX_ROWS, NULL, 0, NULL );
+  printf("The third argument is null, and the result is:%d\n", rc);
+
 rc = SQLGetStmtAttr( hstmt, SQL_ATTR_MAX_LENGTH,
                                                         &cursor_hold, 0, NULL ) ;
 printf( "\nSQL_ATTR_MAX_LENGTHd is: " ) ;
