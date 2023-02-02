@@ -1830,6 +1830,29 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 						//oci_date->OCIDateTime.OCITimeHH = std_time.fr;
 						//
 						len = rgbValueOffset;
+                    } else if(pIndicatorBindRow_old == SQL_OCI_DAT)
+					{
+						struct tm  *tim;
+						unsigned char *oci_dat = (unsigned char *) rgbValueBindRow;
+
+						tim = SC_get_localtime(stmt);
+						if (std_time.m == 0)
+							std_time.m = tim->tm_mon + 1;
+						if (std_time.d == 0)
+							std_time.d = tim->tm_mday;
+						if (std_time.y == 0)
+							std_time.y = tim->tm_year + 1900;
+
+						oci_dat[0] = std_time.y/100 + 100;
+                        oci_dat[1] = std_time.y%100 + 100;
+                        oci_dat[2] = std_time.m;
+						oci_dat[3] = std_time.d;
+						oci_dat[4] = std_time.hh;
+						oci_dat[5] = std_time.mm;
+						oci_dat[6] = std_time.ss;
+						//oci_date->OCIDateTime.OCITimeHH = std_time.fr;
+						//
+						len = rgbValueOffset;
 					}else
 					{
 						struct tm  *tim;
