@@ -1,0 +1,29 @@
+connected
+hstmt2 SQLSetCursorName failed for NULL
+HY009=[unixODBC][Driver Manager]Invalid use of null pointer
+hstmt2 SQLSetCursorName failed for C1
+34000=the cursor name is duplicated in the connection
+hstmt2 SQLSetCursorName failed for c1
+34000=the cursor name is duplicated in the connection
+connected
+conn1_htmt cusorname is C1
+disconnecting
+hstmt cusorname is C1
+hstmt2 cusorname is 
+current ORDERNUM=5452, QUANTITY=1
+current ORDERNUM=5453, QUANTITY=2
+current ORDERNUM=5454, QUANTITY=3
+Result set:
+5452	104	1001	1999-01-23 00:00:00	1
+5453	104	1001	1999-01-23 00:00:00	2
+5455	104	1001	1999-01-23 00:00:00	4
+5456	104	1001	1999-01-23 00:00:00	5
+5454	104	1001	1999-01-23 00:00:00	1234567
+Result set:
+5452	104	1001	1999-01-23 00:00:00	1
+5453	104	1001	1999-01-23 00:00:00	2
+5456	104	1001	1999-01-23 00:00:00	5
+5454	104	1001	1999-01-23 00:00:00	1234567
+hstmt3 cusorname is "select C1"
+disconnecting
+exit code : 0

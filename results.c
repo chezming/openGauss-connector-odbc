@@ -4922,15 +4922,34 @@ PGAPI_SetCursorName(HSTMT hstmt,
 {
 	CSTR func = "PGAPI_SetCursorName";
 	StatementClass *stmt = (StatementClass *) hstmt;
+    ConnectionClass *conn;
+    short i = 0;
 
 	MYLOG(0, "entering hstmt=%p, szCursor=%p, cbCursorMax=%d\n", hstmt, szCursor, cbCursor);
 
-	if (!stmt)
+    conn = SC_get_conn(stmt);
+    if (!stmt || !conn)
 	{
 		SC_log_error(func, NULL_STRING, NULL);
 		return SQL_INVALID_HANDLE;
 	}
 
+    /* 测试要求:连接中的所有游标名称都必须是唯一的,无法添加重名游标 */
+    CONNLOCK_ACQUIRE(conn);
+    for (i = 0; i < conn->num_stmts; i++)
+    {
+        StatementClass *s = conn->stmts[i];
+        if (s && s->cursor_name.name && (s != stmt))
+        {
+            if (!compare_cursor_name(SC_cursor_name(s), szCursor))
+            {
+                CONNLOCK_RELEASE(conn);
+                SC_set_error(stmt, STMT_INVALID_CURSOR_NAME, "the cursor name is duplicated in the connection", func);
+                return SQL_ERROR;
+            }
+        }
+    }
+    CONNLOCK_RELEASE(conn);
 	SET_NAME_DIRECTLY(stmt->cursor_name, make_string(szCursor, cbCursor, NULL, 0));
 	return SQL_SUCCESS;
 }
