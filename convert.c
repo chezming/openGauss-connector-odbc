@@ -164,7 +164,7 @@ typedef struct
 	int			mm;
 	int			ss;
 	int			fr;
-    int			zone;
+	int			zone;
 } SIMPLE_TIME;
 
 static const char *mapFunction(const char *func, int param_count);
@@ -1211,8 +1211,8 @@ convert_text_field_to_sql_c(GetDataInfo * const gdata, const int current_col,
 cleanup:
 	*length_return = len;
 
-    if(copy_size)
-        *copy_size = copy_len;
+	if(copy_size)
+		*copy_size = copy_len;
 
 	return result;
 }
@@ -1248,7 +1248,7 @@ copy_and_convert_field(StatementClass *stmt,
 	char		booltemp[3];
 	char		midtemp[64];
 	GetDataClass *pgdc;
-    SQLLEN pIndicatorBindRow_old = 0;
+	SQLLEN pIndicatorBindRow_old = 0;
 	unsigned int *copy_size = NULL;
 
 	if (stmt->current_col >= 0)
@@ -1299,7 +1299,7 @@ copy_and_convert_field(StatementClass *stmt,
 	if (pIndicator)
 	{
 		pIndicatorBindRow = LENADDR_SHIFT(pIndicator, pcbValueOffset);
-        pIndicatorBindRow_old = *pIndicatorBindRow;
+		pIndicatorBindRow_old = *pIndicatorBindRow;
 		*pIndicatorBindRow = 0;
 	}
 
@@ -1423,7 +1423,7 @@ MYLOG(0, "null_cvt_date_string=%d\n", conn->connInfo.cvt_null_date_string);
 				std_time.hh = 23;
 				std_time.mm = 59;
 				std_time.ss = 59;
-                std_time.zone = 0;
+				std_time.zone = 0;
 			}
 			if (strnicmp(value, MINFINITY_STRING, 9) == 0)
 			{
@@ -1435,7 +1435,7 @@ MYLOG(0, "null_cvt_date_string=%d\n", conn->connInfo.cvt_null_date_string);
 				std_time.hh = 0;
 				std_time.mm = 0;
 				std_time.ss = 0;
-                std_time.zone = 0;
+				std_time.zone = 0;
 			}
 			if (strnicmp(value, "invalid", 7) != 0)
 			{
@@ -1448,7 +1448,7 @@ MYLOG(0, "null_cvt_date_string=%d\n", conn->connInfo.cvt_null_date_string);
 				 */
 				bZone = TRUE;	/* time zone stuff is unreliable */
 				timestamp2stime(value, &std_time, &bZone, &zone);
-                std_time.zone = zone;
+				std_time.zone = zone;
 MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 			}
 			else
@@ -1595,7 +1595,7 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 #endif /* UNICODE_SUPPORT */
 		case SQL_C_CHAR:
 			text_bin_handling = TRUE;
-            if(pIndicatorBindRow_old == SQL_OCI_DATA)
+			if(pIndicatorBindRow_old == SQL_OCI_DATA)
 			{
 				char *tmp = NULL;
 				/* 此处是需要强转为二级指针，不能通过一级指针后判断是否为空，因为取值后为cha类型，
@@ -1780,7 +1780,7 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 			case SQL_C_TYPE_TIMESTAMP:	/* 93 */
 				len = 16;
 				{
-                    if(SQL_OCI_DATETIME == pIndicatorBindRow_old)
+					if(SQL_OCI_DATETIME == pIndicatorBindRow_old)
 					{
 						struct tm  *tim;
 						OCIDateTime *oci_dateTime = NULL;
@@ -1830,7 +1830,7 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 						//oci_date->OCIDateTime.OCITimeHH = std_time.fr;
 						//
 						len = rgbValueOffset;
-                    } else if(pIndicatorBindRow_old == SQL_OCI_DAT)
+					} else if(pIndicatorBindRow_old == SQL_OCI_DAT)
 					{
 						struct tm  *tim;
 						unsigned char *oci_dat = (unsigned char *) rgbValueBindRow;
@@ -1844,8 +1844,8 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 							std_time.y = tim->tm_year + 1900;
 
 						oci_dat[0] = std_time.y/100 + 100;
-                        oci_dat[1] = std_time.y%100 + 100;
-                        oci_dat[2] = std_time.m;
+						oci_dat[1] = std_time.y%100 + 100;
+						oci_dat[2] = std_time.m;
 						oci_dat[3] = std_time.d;
 						oci_dat[4] = std_time.hh + 1;
 						oci_dat[5] = std_time.mm + 1;
@@ -1885,7 +1885,7 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 						ts->minute = std_time.mm;
 						ts->second = std_time.ss;
 						ts->fraction = std_time.fr;
-                    }
+					}
 				}
 				break;
 
@@ -4894,7 +4894,7 @@ MYLOG(DETAIL_LOG_LEVEL, "ipara=%p paramType=%d %d proc_return=%d\n", ipara, ipar
 				bSetUsed = TRUE;
 			}
 		}
-        if (current_row > 0)
+		if (current_row > 0)
 		{
 			if (bind_size > 0)
 				buffer += (bind_size * current_row);
@@ -4902,7 +4902,7 @@ MYLOG(DETAIL_LOG_LEVEL, "ipara=%p paramType=%d %d proc_return=%d\n", ipara, ipar
 				buffer += current_row * 22;
 			else if(apara->CType == SQL_C_TYPE_TIMESTAMP && used == SQL_OCI_DATA)
 				buffer += current_row * sizeof(OCIDate);
-            else if(apara->CType == SQL_C_TYPE_TIMESTAMP && used == SQL_OCI_DAT)
+			else if(apara->CType == SQL_C_TYPE_TIMESTAMP && used == SQL_OCI_DAT)
 				buffer += current_row * SQL_OCI_DAT_SIZE;
 			else if(apara->CType == SQL_C_TYPE_TIMESTAMP && used == SQL_OCI_DATETIME)
 				buffer += current_row * sizeof(OCIDateTime *);
@@ -5188,7 +5188,7 @@ MYLOG(0, " C_WCHAR=%d contents=%s(" FORMAT_LEN ")\n", param_ctype, buffer, used)
 		case SQL_C_TIMESTAMP:
 		case SQL_C_TYPE_TIMESTAMP:	/* 93 */
 			{
-                if(SQL_OCI_DATA == used)
+				if(SQL_OCI_DATA == used)
 				{
 					OCIDate *oci_date = (OCIDate *) buffer;
 
@@ -5199,7 +5199,7 @@ MYLOG(0, " C_WCHAR=%d contents=%s(" FORMAT_LEN ")\n", param_ctype, buffer, used)
 					st.mm = oci_date->OCIDateTime.OCITimeMI;
 					st.ss = oci_date->OCIDateTime.OCITimeSS;
 					st.fr = 0;
-                }else if(SQL_OCI_DAT == used)
+				}else if(SQL_OCI_DAT == used)
 				{
 					unsigned char *oci_dat = (unsigned char*) buffer;
 					st.y = (oci_dat[0] - 100) * 100 + oci_dat[1] - 100;
@@ -5231,11 +5231,11 @@ MYLOG(0, " C_WCHAR=%d contents=%s(" FORMAT_LEN ")\n", param_ctype, buffer, used)
 					st.mm = tss->minute;
 					st.ss = tss->second;
 					st.fr = tss->fraction;
-                }
+				}
 
-					MYLOG(0, "m=%d,d=%d,y=%d,hh=%d,mm=%d,ss=%d\n", st.m, st.d, st.y, st.hh, st.mm, st.ss);
+				MYLOG(0, "m=%d,d=%d,y=%d,hh=%d,mm=%d,ss=%d\n", st.m, st.d, st.y, st.hh, st.mm, st.ss);
 
-					break;
+				break;
 			}
 		case SQL_C_NUMERIC:
 		{
