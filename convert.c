@@ -1793,7 +1793,7 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 						if (std_time.y == 0)
 							std_time.y = tim->tm_year + 1900;
 
-						if(*rgbValueBindRow)
+						if(rgbValueBindRow)
 						{
 							oci_dateTime = *(OCIDateTime **) rgbValueBindRow;
 							oci_dateTime->YYYY = std_time.y;
@@ -4879,6 +4879,8 @@ MYLOG(DETAIL_LOG_LEVEL, "ipara=%p paramType=%d %d proc_return=%d\n", ipara, ipar
 				buffer += current_row * 22;
 			else if(apara->CType == SQL_C_TYPE_TIMESTAMP && used == SQL_OCI_DATA)
 				buffer += current_row * sizeof(OCIDate);
+            else if(apara->CType == SQL_C_TYPE_TIMESTAMP && used == SQL_OCI_DAT)
+				buffer += current_row * SQL_OCI_DAT_SIZE;
 			else if(apara->CType == SQL_C_TYPE_TIMESTAMP && used == SQL_OCI_DATETIME)
 				buffer += current_row * sizeof(OCIDateTime *);
 			else if (ctypelen = ctype_length(apara->CType), ctypelen > 0)
@@ -5174,6 +5176,16 @@ MYLOG(0, " C_WCHAR=%d contents=%s(" FORMAT_LEN ")\n", param_ctype, buffer, used)
 					st.mm = oci_date->OCIDateTime.OCITimeMI;
 					st.ss = oci_date->OCIDateTime.OCITimeSS;
 					st.fr = 0;
+                }else if(SQL_OCI_DAT == used)
+				{
+					unsigned char *oci_dat = (Unsigned char*) buffer;
+					st.y = (oci_dat[0] - 100) * 100 + oci_dat[1] - 100;
+					st.m = oci_dat[2];
+					st.d = oci_dat[3];
+					st.hh = oci_dat[4];
+					st.mm = oci_dat[5];
+					st.ss = oci_dat[6];
+					st.fr = 0
 				}else if(SQL_OCI_DATETIME == used)
 				{
 					OCIDateTime *oci_dateTime = *(OCIDateTime **) buffer;
