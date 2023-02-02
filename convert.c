@@ -1847,9 +1847,9 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
                         oci_dat[1] = std_time.y%100 + 100;
                         oci_dat[2] = std_time.m;
 						oci_dat[3] = std_time.d;
-						oci_dat[4] = std_time.hh;
-						oci_dat[5] = std_time.mm;
-						oci_dat[6] = std_time.ss;
+						oci_dat[4] = std_time.hh + 1;
+						oci_dat[5] = std_time.mm + 1;
+						oci_dat[6] = std_time.ss + 1;
 						//oci_date->OCIDateTime.OCITimeHH = std_time.fr;
 						//
 						len = rgbValueOffset;
@@ -5201,14 +5201,14 @@ MYLOG(0, " C_WCHAR=%d contents=%s(" FORMAT_LEN ")\n", param_ctype, buffer, used)
 					st.fr = 0;
                 }else if(SQL_OCI_DAT == used)
 				{
-					unsigned char *oci_dat = (Unsigned char*) buffer;
+					unsigned char *oci_dat = (unsigned char*) buffer;
 					st.y = (oci_dat[0] - 100) * 100 + oci_dat[1] - 100;
 					st.m = oci_dat[2];
 					st.d = oci_dat[3];
-					st.hh = oci_dat[4];
-					st.mm = oci_dat[5];
-					st.ss = oci_dat[6];
-					st.fr = 0
+					st.hh = oci_dat[4] - 1;
+					st.mm = oci_dat[5] - 1;
+					st.ss = oci_dat[6] - 1;
+					st.fr = 0;
 				}else if(SQL_OCI_DATETIME == used)
 				{
 					OCIDateTime *oci_dateTime = *(OCIDateTime **) buffer;
