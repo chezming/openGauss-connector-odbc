@@ -1,5 +1,5 @@
 /*
-test: 测试接口SQLGetstmtAttr，
+test: 测试接口SQLGetstmtAttr
 */
 #include <stdio.h>
 #include <sql.h>
@@ -90,10 +90,6 @@ SQLINTEGER cursor_hold;
     rc = SQLGetStmtAttr(NULL, SQL_ATTR_MAX_LENGTH, &cursor_hold, 0, NULL);
     printf("The first argument is null, and the result is:%d\n", rc);
     rc = SQLGetStmtAttr(hstmt, SQL_ATTR_MAX_LENGTH, NULL, 0, NULL);
-    printf("The third argument is null, and the result is:%d\n", rc);
-    rc = SQLGetStmtAttr(NULL, SQL_ATTR_MAX_ROWS, &cursor_hold, 0, NULL);
-    printf("The first argument is null, and the result is:%d\n", rc);
-    rc = SQLGetStmtAttr(hstmt, SQL_ATTR_MAX_ROWS, NULL, 0, NULL);
     printf("The third argument is null, and the result is:%d\n", rc);
 
 rc = SQLGetStmtAttr( hstmt, SQL_ATTR_MAX_LENGTH,

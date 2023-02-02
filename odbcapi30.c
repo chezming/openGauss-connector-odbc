@@ -406,7 +406,7 @@ SQLGetStmtAttr(HSTMT StatementHandle,
 	RETCODE	ret;
 	StatementClass	*stmt = (StatementClass *) StatementHandle;
 
-    if (Value == NULL) {
+    if (!Value) {
         SC_clear_error(stmt);
         SC_set_error(stmt, STMT_INVALID_NULL_ARG, "The parameter Value is required", __FUNCTION__);
         return SQL_ERROR;
