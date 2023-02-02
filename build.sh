@@ -294,6 +294,7 @@ install_odbc
 make_package
 
 # 3. cp odbc package to output
+rm -rf ${LOCAL_DIR}/output
 mkdir ${LOCAL_DIR}/output
 mv ${BUILD_DIR}/*.tar.gz ${LOCAL_DIR}/output/
 
