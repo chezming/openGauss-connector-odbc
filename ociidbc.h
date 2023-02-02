@@ -1,8 +1,11 @@
 #ifndef __OCIODBC_H__
 #define __OCIODBC_H__
 
+#define SQL_OCI_DAT -95
 #define SQL_OCI_DATA -97
 #define SQL_OCI_DATETIME -96
+
+#define SQL_OCI_SIZE 7
 
 typedef signed char sb1;
 typedef unsigned char ub1;
