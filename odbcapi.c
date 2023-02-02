@@ -631,6 +631,12 @@ SQLRowCount(HSTMT StatementHandle,
 	if (SC_connection_lost_check(stmt, __FUNCTION__))
 		return SQL_ERROR;
 
+    if (!RowCount) {
+        SC_clear_error(stmt);
+        SC_set_error(stmt, STMT_INVALID_NULL_ARG, "The paramter RowCount pointer is required", __FUNCTION__);
+        return SQL_ERROR;
+    }
+
 	ENTER_STMT_CS(stmt);
 	SC_clear_error(stmt);
 	StartRollbackState(stmt);
