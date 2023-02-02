@@ -81,6 +81,15 @@ int main(int argc,char *argv[])
   printf( "ON\n" ) ;
  else
   printf( "OFF\n" ) ; 
+
+  SQLINTEGER lengthPtr;
+  // Abnormal test
+  rc = SQLGetConnectAttr( NULL, SQL_AUTOCOMMIT, &autocommit, SQL_NTS, &lengthPtr) ;
+  printf("The first argument is null, and the result is:%d\n", rc);
+
+  rc = SQLGetConnectAttr( V_OD_hdbc, SQL_AUTOCOMMIT, NULL, SQL_NTS, &lengthPtr) ;
+  printf("The third argument is null, and the result is:%d\n", rc);
+
     SQLDisconnect(V_OD_hdbc);
     SQLFreeHandle(SQL_HANDLE_DBC,V_OD_hdbc);
     SQLFreeHandle(SQL_HANDLE_ENV, V_OD_Env);
