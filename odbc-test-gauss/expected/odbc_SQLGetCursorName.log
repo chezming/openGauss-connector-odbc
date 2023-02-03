@@ -1,0 +1,15 @@
+connected
+current cursorname is C1, len is 2
+current 2 cursorname is SQL_CUR0x1743f90, len is 16
+current 3 cursorname is A1B2C3D4E, len is 10
+SQLGetCursorName failed
+HY090=[unixODBC][Driver Manager]Invalid string or buffer length
+rc need to be -2: -2
+failed to SQLGetCursorName
+HY009=The szCursor pointer is required
+rc=-1
+SQLGetCursorName failed
+HY009=The pcbCursor pointer is required
+rc -1 current  cursorname is C1, len is 0
+disconnecting
+exit code : 0

@@ -40,6 +40,7 @@ ifndef cases
 		odbc_SQLExtendedFetch \
 		odbc_SQLGetConnectAttr \
 		odbc_SQLGetConnectOption \
+		odbc_SQLGetCursorName \
 		odbc_SQLGetDescField \
 		odbc_SQLGetDiagField \
 		odbc_SQLGetEnvAttr \

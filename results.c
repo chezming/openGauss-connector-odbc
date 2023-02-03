@@ -4968,9 +4968,20 @@ PGAPI_GetCursorName(HSTMT hstmt,
 			SC_set_error(stmt, STMT_TRUNCATED, "The buffer was too small for the GetCursorName.", func);
 		}
 	}
+	else
+	{
+		result = SQL_ERROR;
+		SC_set_error(stmt, STMT_INVALID_NULL_ARG, "The szCursor pointer is required", func);
+	}
 
 	if (pcbCursor)
 		*pcbCursor = (SQLSMALLINT) len;
+	else
+	{
+		/* m100: 长度字段为NULL时,也必须返回SQLERROR -1 */
+		result = SQL_ERROR;
+		SC_set_error(stmt, STMT_INVALID_NULL_ARG, "The pcbCursor pointer is required", func);
+	}
 
 	/*
 	 * Because this function causes no db-access, there's
