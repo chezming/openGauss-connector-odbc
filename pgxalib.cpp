@@ -459,10 +459,15 @@ static	bool bImmediateConnectDefault = false;
 #define	KEYWORD_DEBUG		"debug"
 #define	KEYWORD_ABDEBUG		"B2"
 
+#ifndef MIN
+#define MIN(a, b)        (((a) < (b)) ? (a) : (b))
+#endif
+
 void XAConnection::parse_xa_info()
 {
 	const char	*cstr, *pstr, *pnstr;
 	char		keyword[64], value[64];
+	int		klen = sizeof(keyword)/sizeof(keyword[0]), vlen = sizeof(value)/sizeof(value[0]);
 	bool		keyhasbr, valhasbr;
 	int		debugv = -1;
 
@@ -478,7 +483,7 @@ void XAConnection::parse_xa_info()
 		{
 			keyhasbr = true;
 			if (pnstr = strchr(pstr, (int) CHAR_CLOSING_BRACE), NULL != pnstr)
-				strncpy_s(keyword, sizeof(keyword), pstr + 1, pnstr - pstr - 1);
+				strncpy_s(keyword, klen, pstr + 1, MIN(pnstr - pstr - 1, klen - 1));
 			else
 				break;
 			pstr = pnstr + 1;
@@ -488,7 +493,7 @@ void XAConnection::parse_xa_info()
 		else
 		{
 			if (pnstr = strchr(pstr, (int) CHAR_EQUAL), NULL != pnstr)
-				strncpy_s(keyword, sizeof(keyword), pstr, pnstr - pstr);
+				strncpy_s(keyword, klen, pstr, MIN(pnstr - pstr, klen - 1));
 			else
 				break;
 			pstr = pnstr;
@@ -498,7 +503,7 @@ void XAConnection::parse_xa_info()
 		{
 			valhasbr = true;
 			if (pnstr = strchr(pstr, (int) CHAR_CLOSING_BRACE), NULL != pnstr)
-				strncpy_s(value, sizeof(value), pstr + 1, pnstr - pstr - 1);
+				strncpy_s(value, vlen, pstr + 1, MIN(pnstr - pstr - 1, vlen - 1));
 			else
 				break;
 			pstr = pnstr + 1;
@@ -507,12 +512,12 @@ void XAConnection::parse_xa_info()
 		{
 			if (pnstr = strchr(pstr, (int) CHAR_SEMI_COLON), NULL != pnstr)
 			{
-				strncpy_s(value, sizeof(value), pstr, pnstr - pstr);
+				strncpy_s(value, vlen, pstr, MIN(pnstr - pstr, vlen - 1));
 				pstr = pnstr;
 			}
 			else
 			{
-				strcpy(value, pstr);
+				strncpy_s(value, vlen, pstr, MIN(strlen(pstr), vlen-1));
 				pstr = strchr(pstr, '\0');
 			}
 		}
