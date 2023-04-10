@@ -512,7 +512,7 @@ void XAConnection::parse_xa_info()
 			}
 			else
 			{
-				strcpy(value, pstr);
+				strncpy_s(value, sizeof(value), pstr, strlen(pstr));
 				pstr = strchr(pstr, '\0');
 			}
 		}
