@@ -1012,10 +1012,10 @@ setup_getdataclass(SQLLEN * const length_return, const char ** const ptr_return,
 		if (needbuflen > (SQLLEN) pgdc->ttlbuflen)
 		{
 			pgdc->ttlbuf = realloc(pgdc->ttlbuf, needbuflen + len_for_wcs_term);
-			if (!pgdc->ttlbuf)
-			{
-				goto cleanup;
-			}
+            if (!pgdc->ttlbuf)
+            {
+                goto cleanup;
+            }
 			pgdc->ttlbuflen = needbuflen;
 		}
 
