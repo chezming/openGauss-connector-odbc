@@ -1014,6 +1014,7 @@ setup_getdataclass(SQLLEN * const length_return, const char ** const ptr_return,
 			pgdc->ttlbuf = realloc(pgdc->ttlbuf, needbuflen + len_for_wcs_term);
             if (!pgdc->ttlbuf)
             {
+                result = COPY_GENERAL_ERROR
                 goto cleanup;
             }
 			pgdc->ttlbuflen = needbuflen;
