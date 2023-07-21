@@ -2715,7 +2715,7 @@ MYLOG(DETAIL_LOG_LEVEL, "get_Result=%p %p %d\n", res, SC_get_Result(stmt), stmt-
 
 	if (res != newres && NULL != newres)
 		QR_Destructor(newres);
-	if (SC_CanUseBatchProto(stmt))
+	if (SC_CanUseBatchProto(stmt) || SC_get_APDF(stmt)->paramset_size == 1)
 			stmt->exec_end_row = 
 			stmt->exec_current_row = SC_get_APDF(stmt)->paramset_size;
 cleanup:
