@@ -161,7 +161,9 @@ static const struct
 	,{
 		STMT_TYPE_SPECIAL, "CHECKPOINT"
 	}
-
+	,{
+		STMT_TYPE_MERGE, "MERGE"
+	}
 	,{
 		STMT_TYPE_WITH, "WITH"
 	}
@@ -3287,7 +3289,9 @@ BOOL SC_CanUseBatchProto(const StatementClass *self)
 		st == STMT_TYPE_UNKNOWN)
 		st = statement_type(self->statement);
 
-	if (st == STMT_TYPE_INSERT ||
+	if (st == STMT_TYPE_MERGE ||
+		st == STMT_TYPE_SELECT ||
+		st == STMT_TYPE_INSERT ||
 		st == STMT_TYPE_UPDATE ||
 		st == STMT_TYPE_DELETE)
 		return TRUE;

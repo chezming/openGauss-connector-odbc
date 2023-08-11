@@ -132,6 +132,7 @@ enum
 	,STMT_TYPE_COPY
 	,STMT_TYPE_START
 	,STMT_TYPE_SPECIAL
+	,STMT_TYPE_MERGE
 };
 
 #define STMT_UPDATE(stmt)	((stmt)->statement_type > STMT_TYPE_PROCCALL)
