@@ -387,6 +387,12 @@ SQLGetConnectAttr(HDBC ConnectionHandle,
 {
 	RETCODE	ret;
 
+    if (!Value) {
+        CC_clear_error((ConnectionClass *) ConnectionHandle);
+        CC_set_error((ConnectionClass *) ConnectionHandle, CONN_EXEC_ERROR, "parameter Value is required", __FUNCTION__);
+        return SQL_ERROR;
+    }
+
 	MYLOG(0, "Entering %d\n", Attribute);
 	CC_examine_global_transaction((ConnectionClass*) ConnectionHandle);
 	ENTER_CONN_CS((ConnectionClass *) ConnectionHandle);
