@@ -54,6 +54,9 @@ static const struct
 	,{
 		STMT_TYPE_UPDATE, "UPDATE"
 	}
+ 	,{
+		STMT_TYPE_MERGE, "MERGE"
+	}
 	,{
 		STMT_TYPE_DELETE, "DELETE"
 	}
@@ -3250,6 +3253,7 @@ MYLOG(0, "leaving cvtlen=" FORMAT_SIZE_T " ix(bl,of)=%d(%d,%d)\n", cvtlen, pg_bm
  *     - binded parameter sets count should be greater than 1.
  *     - binded parameter sets should not be all ignored.
  *     - INSERT/UPDATE/DELETE commands enabled.
+ *     - MERGE commands enabled. By haixiong.luo@enmotech.com 20220823
  */
 BOOL SC_CanUseBatchProto(const StatementClass *self)
 {
@@ -3289,6 +3293,7 @@ BOOL SC_CanUseBatchProto(const StatementClass *self)
 
 	if (st == STMT_TYPE_INSERT ||
 		st == STMT_TYPE_UPDATE ||
+        st == STMT_TYPE_MERGE  ||
 		st == STMT_TYPE_DELETE)
 		return TRUE;
 
