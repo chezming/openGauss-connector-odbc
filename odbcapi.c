@@ -1278,6 +1278,19 @@ SQLProcedureColumns(HSTMT hstmt,
 		*prName = szProcName, *clName = szColumnName;
 	UWORD	flag = 0;
 
+    if (!hstmt)
+    {
+        SC_log_error(func, NULL_STRING, NULL);
+        return SQL_INVALID_HANDLE;
+    }
+
+    if (!szProcName)
+    {
+        SC_clear_error(stmt);
+        SC_set_error(stmt, STMT_INVALID_NULL_ARG, "The parameter szProcName is required", __FUNCTION__);
+        return SQL_ERROR;
+    }
+
 	MYLOG(0, "Entering\n");
 	if (SC_connection_lost_check(stmt, __FUNCTION__))
 		return SQL_ERROR;
