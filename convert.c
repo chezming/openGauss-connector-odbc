@@ -46,6 +46,7 @@
 #include "connection.h"
 #include "catfunc.h"
 #include "pgapifunc.h"
+#include "ociodbc.h"
 
 CSTR	NAN_STRING = "NaN";
 CSTR	INFINITY_STRING = "Infinity";
@@ -163,6 +164,7 @@ typedef struct
 	int			mm;
 	int			ss;
 	int			fr;
+	int			zone;
 } SIMPLE_TIME;
 
 static const char *mapFunction(const char *func, int param_count);
@@ -1150,7 +1152,7 @@ convert_text_field_to_sql_c(GetDataInfo * const gdata, const int current_col,
 	const char * const neut_str, const OID field_type,
 	const SQLSMALLINT fCType, char * const rgbValueBindRow,
 	const SQLLEN cbValueMax, const ConnectionClass * const conn,
-	SQLLEN * const length_return)
+	SQLLEN * const length_return, unsigned int *copy_size)
 {
 	int	result = COPY_OK;
 	SQLLEN	len = (-2);
@@ -1258,6 +1260,9 @@ convert_text_field_to_sql_c(GetDataInfo * const gdata, const int current_col,
 cleanup:
 	*length_return = len;
 
+	if(copy_size)
+		*copy_size = copy_len;
+
 	return result;
 }
 
@@ -1292,6 +1297,8 @@ copy_and_convert_field(StatementClass *stmt,
 	char		booltemp[3];
 	char		midtemp[64];
 	GetDataClass *pgdc;
+	SQLLEN pIndicatorBindRow_old = 0;
+	unsigned int *copy_size = NULL;
 
 	if (stmt->current_col >= 0)
 	{
@@ -1341,6 +1348,7 @@ copy_and_convert_field(StatementClass *stmt,
 	if (pIndicator)
 	{
 		pIndicatorBindRow = LENADDR_SHIFT(pIndicator, pcbValueOffset);
+		pIndicatorBindRow_old = *pIndicatorBindRow;
 		*pIndicatorBindRow = 0;
 	}
 
@@ -1465,6 +1473,7 @@ MYLOG(0, "null_cvt_date_string=%d\n", conn->connInfo.cvt_null_date_string);
 				std_time.hh = 23;
 				std_time.mm = 59;
 				std_time.ss = 59;
+				std_time.zone = 0;
 			}
 			if (strnicmp(value, MINFINITY_STRING, 9) == 0)
 			{
@@ -1476,6 +1485,7 @@ MYLOG(0, "null_cvt_date_string=%d\n", conn->connInfo.cvt_null_date_string);
 				std_time.hh = 0;
 				std_time.mm = 0;
 				std_time.ss = 0;
+				std_time.zone = 0;
 			}
 			if (strnicmp(value, "invalid", 7) != 0)
 			{
@@ -1486,8 +1496,9 @@ MYLOG(0, "null_cvt_date_string=%d\n", conn->connInfo.cvt_null_date_string);
 				 * sscanf(value, "%4d-%2d-%2d %2d:%2d:%2d", &std_time.y, &std_time.m,
 				 * &std_time.d, &std_time.hh, &std_time.mm, &std_time.ss);
 				 */
-				bZone = FALSE;	/* time zone stuff is unreliable */
+				bZone = TRUE;	/* time zone stuff is unreliable */
 				timestamp2stime(value, &std_time, &bZone, &zone);
+				std_time.zone = zone;
 MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 			}
 			else
@@ -1634,6 +1645,23 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 #endif /* UNICODE_SUPPORT */
 		case SQL_C_CHAR:
 			text_bin_handling = TRUE;
+			if(pIndicatorBindRow_old == SQL_OCI_DATA)
+			{
+				char *tmp = NULL;
+				/* 此处是需要强转为二级指针，不能通过一级指针后判断是否为空，因为取值后为cha类型，
+				 * 而不是char*类型。故直接通过rgbValueBindRow判断。并增加错误处理*/
+				if(rgbValueBindRow)
+				{
+					tmp = *(char **)rgbValueBindRow;
+					rgbValueBindRow = tmp+8;
+					cbValueMax = (*(unsigned int *)tmp) - 1;
+					copy_size = (unsigned int *)(tmp + 4);
+				} else
+				{
+					MYLOG(0, "couldn't convert to OCISTring\n");
+					return COPY_UNSUPPORTED_TYPE;
+				}
+			}
 			break;
 		case SQL_C_BINARY:
 			switch (field_type)
@@ -1731,7 +1759,7 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 		}
 		if (pre_convert)
 			neut_str = midtemp;
-		result = convert_text_field_to_sql_c(gdata, stmt->current_col, neut_str, field_type, fCType, rgbValueBindRow, cbValueMax, conn, &len);
+		result = convert_text_field_to_sql_c(gdata, stmt->current_col, neut_str, field_type, fCType, rgbValueBindRow, cbValueMax, conn, &len, copy_size);
 	}
 	else
 	{
@@ -1807,36 +1835,112 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 			case SQL_C_TYPE_TIMESTAMP:	/* 93 */
 				len = 16;
 				{
-					struct tm  *tim;
-					TIMESTAMP_STRUCT *ts;
+					if(SQL_OCI_DATETIME == pIndicatorBindRow_old)
+					{
+						struct tm  *tim;
+						OCIDateTime *oci_dateTime = NULL;
 
-					if (bind_size > 0)
-						ts = (TIMESTAMP_STRUCT *) rgbValueBindRow;
-					else
-						ts = (TIMESTAMP_STRUCT *) rgbValue + bind_row;
-
-					/*
-					 * Initialize date in case conversion destination
-					 * expects date part from this source time data.
-					 * A value may be partially set here, so do some
-					 * sanity checks on the existing values before
-					 * setting them.
-					 */
-					tim = SC_get_localtime(stmt);
-					if (std_time.m == 0)
+						tim = SC_get_localtime(stmt);
+						if (std_time.m == 0)
 						std_time.m = tim->tm_mon + 1;
-					if (std_time.d == 0)
-						std_time.d = tim->tm_mday;
-					if (std_time.y == 0)
-						std_time.y = tim->tm_year + 1900;
+						if (std_time.d == 0)
+							std_time.d = tim->tm_mday;
+						if (std_time.y == 0)
+							std_time.y = tim->tm_year + 1900;
 
-					ts->year = std_time.y;
-					ts->month = std_time.m;
-					ts->day = std_time.d;
-					ts->hour = std_time.hh;
-					ts->minute = std_time.mm;
-					ts->second = std_time.ss;
-					ts->fraction = std_time.fr;
+						if(rgbValueBindRow)
+						{
+							oci_dateTime = *(OCIDateTime **) rgbValueBindRow;
+							oci_dateTime->YYYY = std_time.y;
+							oci_dateTime->MM = std_time.m;
+							oci_dateTime->DD = std_time.d;
+							oci_dateTime->HH = std_time.hh;
+							oci_dateTime->MI = std_time.mm;
+							oci_dateTime->SS = std_time.ss;
+							oci_dateTime->fraction = std_time.fr;
+							snprintf(oci_dateTime->zone, 20, "%d", std_time.zone);
+							oci_dateTime->zone[19] ='\0';
+
+							len = rgbValueOffset;
+						}
+					} else if(pIndicatorBindRow_old == SQL_OCI_DATA)
+					{
+						struct tm  *tim;
+						OCIDate *oci_date = (OCIDate *) rgbValueBindRow;
+
+						tim = SC_get_localtime(stmt);
+						if (std_time.m == 0)
+						std_time.m = tim->tm_mon + 1;
+						if (std_time.d == 0)
+							std_time.d = tim->tm_mday;
+						if (std_time.y == 0)
+							std_time.y = tim->tm_year + 1900;
+
+						oci_date->OCIDateYYYY = std_time.y;
+						oci_date->OCIDateMM = std_time.m;
+						oci_date->OCIDateDD = std_time.d;
+						oci_date->OCIDateTime.OCITimeHH = std_time.hh;
+						oci_date->OCIDateTime.OCITimeMI = std_time.mm;
+						oci_date->OCIDateTime.OCITimeSS = std_time.ss;
+						//oci_date->OCIDateTime.OCITimeHH = std_time.fr;
+						//
+						len = rgbValueOffset;
+					} else if(pIndicatorBindRow_old == SQL_OCI_DAT)
+					{
+						struct tm  *tim;
+						unsigned char *oci_dat = (unsigned char *) rgbValueBindRow;
+
+						tim = SC_get_localtime(stmt);
+						if (std_time.m == 0)
+							std_time.m = tim->tm_mon + 1;
+						if (std_time.d == 0)
+							std_time.d = tim->tm_mday;
+						if (std_time.y == 0)
+							std_time.y = tim->tm_year + 1900;
+
+						oci_dat[0] = std_time.y/100 + 100;
+						oci_dat[1] = std_time.y%100 + 100;
+						oci_dat[2] = std_time.m;
+						oci_dat[3] = std_time.d;
+						oci_dat[4] = std_time.hh + 1;
+						oci_dat[5] = std_time.mm + 1;
+						oci_dat[6] = std_time.ss + 1;
+						//oci_date->OCIDateTime.OCITimeHH = std_time.fr;
+						//
+						len = rgbValueOffset;
+					}else
+					{
+						struct tm  *tim;
+						TIMESTAMP_STRUCT *ts;
+
+						if (bind_size > 0)
+							ts = (TIMESTAMP_STRUCT *) rgbValueBindRow;
+						else
+							ts = (TIMESTAMP_STRUCT *) rgbValue + bind_row;
+
+						/*
+						 * Initialize date in case conversion destination
+						 * expects date part from this source time data.
+						 * A value may be partially set here, so do some
+						 * sanity checks on the existing values before
+						 * setting them.
+						 */
+						tim = SC_get_localtime(stmt);
+						if (std_time.m == 0)
+							std_time.m = tim->tm_mon + 1;
+						if (std_time.d == 0)
+							std_time.d = tim->tm_mday;
+						if (std_time.y == 0)
+							std_time.y = tim->tm_year + 1900;
+
+						ts->year = std_time.y;
+						ts->month = std_time.m;
+						ts->day = std_time.d;
+						ts->hour = std_time.hh;
+						ts->minute = std_time.mm;
+						ts->second = std_time.ss;
+						ts->fraction = std_time.fr;
+					}
 				}
 				break;
 
@@ -1894,8 +1998,13 @@ MYLOG(DETAIL_LOG_LEVEL, "2stime fr=%d\n", std_time.fr);
 					if (bind_size > 0)
 						ns = (SQL_NUMERIC_STRUCT *) rgbValueBindRow;
 					else
-						ns = (SQL_NUMERIC_STRUCT *) rgbValue + bind_row;
-
+					{
+						if(pIndicatorBindRow_old == SQL_OCI_DATA)
+						{
+							ns = (SQL_NUMERIC_STRUCT *) rgbValueBindRow;
+						} else
+							ns = (SQL_NUMERIC_STRUCT *) rgbValue + bind_row;
+					}
 					parse_to_numeric_struct(neut_str, ns, &overflowed);
 					if (overflowed)
 						result = COPY_RESULT_TRUNCATED;
@@ -4820,15 +4929,6 @@ MYLOG(DETAIL_LOG_LEVEL, "ipara=%p paramType=%d %d proc_return=%d\n", ipara, ipar
 		BOOL	bSetUsed = FALSE;
 
 		buffer = apara->buffer + offset;
-		if (current_row > 0)
-		{
-			if (bind_size > 0)
-				buffer += (bind_size * current_row);
-			else if (ctypelen = ctype_length(apara->CType), ctypelen > 0)
-				buffer += current_row * ctypelen;
-			else
-				buffer += current_row * apara->buflen;
-		}
 		if (apara->used || apara->indicator)
 		{
 			SQLULEN	p_offset;
@@ -4848,6 +4948,23 @@ MYLOG(DETAIL_LOG_LEVEL, "ipara=%p paramType=%d %d proc_return=%d\n", ipara, ipar
 				used = *LENADDR_SHIFT(apara->used, p_offset);
 				bSetUsed = TRUE;
 			}
+		}
+		if (current_row > 0)
+		{
+			if (bind_size > 0)
+				buffer += (bind_size * current_row);
+			else if(apara->CType == SQL_C_NUMERIC && used == SQL_OCI_DATA)
+				buffer += current_row * 22;
+			else if(apara->CType == SQL_C_TYPE_TIMESTAMP && used == SQL_OCI_DATA)
+				buffer += current_row * sizeof(OCIDate);
+			else if(apara->CType == SQL_C_TYPE_TIMESTAMP && used == SQL_OCI_DAT)
+				buffer += current_row * SQL_OCI_DAT_SIZE;
+			else if(apara->CType == SQL_C_TYPE_TIMESTAMP && used == SQL_OCI_DATETIME)
+				buffer += current_row * sizeof(OCIDateTime *);
+			else if (ctypelen = ctype_length(apara->CType), ctypelen > 0)
+				buffer += current_row * ctypelen;
+			else
+				buffer += current_row * apara->buflen;
 		}
 		if (!bSetUsed)
 			used = SQL_NTS;
@@ -4971,7 +5088,23 @@ MYLOG(DETAIL_LOG_LEVEL, "ipara=%p paramType=%d %d proc_return=%d\n", ipara, ipar
 			send_buf = buffer;
 			break;
 		case SQL_C_CHAR:
-			if (NULL == send_buf)
+			if(SQL_OCI_DATA == used)
+			{
+				char *tmp = NULL;
+				/* 此处是需要强转为二级指针，不能通过一级指针后判断是否为空，因为取值后为cha类型，
+				 * 而不是char*类型。故直接通过buffer判断。并增加错误处理*/
+				if(buffer)
+				{
+					tmp = *(char **)buffer;
+					send_buf = tmp + 8;
+				} else
+				{
+					MYLOG(0, "OCISTring convert error\n");
+					return COPY_UNSUPPORTED_TYPE;
+				}
+				used = SQL_NTS;
+			}
+			else if (NULL == send_buf)
 				send_buf = buffer;
 			break;
 
@@ -5110,20 +5243,54 @@ MYLOG(0, " C_WCHAR=%d contents=%s(" FORMAT_LEN ")\n", param_ctype, buffer, used)
 		case SQL_C_TIMESTAMP:
 		case SQL_C_TYPE_TIMESTAMP:	/* 93 */
 			{
-				TIMESTAMP_STRUCT *tss = (TIMESTAMP_STRUCT *) buffer;
+				if(SQL_OCI_DATA == used)
+				{
+					OCIDate *oci_date = (OCIDate *) buffer;
 
-				st.m = tss->month;
-				st.d = tss->day;
-				st.y = tss->year;
-				st.hh = tss->hour;
-				st.mm = tss->minute;
-				st.ss = tss->second;
-				st.fr = tss->fraction;
+					st.y = oci_date->OCIDateYYYY;
+					st.m = oci_date->OCIDateMM;
+					st.d = oci_date->OCIDateDD;
+					st.hh = oci_date->OCIDateTime.OCITimeHH;
+					st.mm = oci_date->OCIDateTime.OCITimeMI;
+					st.ss = oci_date->OCIDateTime.OCITimeSS;
+					st.fr = 0;
+				}else if(SQL_OCI_DAT == used)
+				{
+					unsigned char *oci_dat = (unsigned char*) buffer;
+					st.y = (oci_dat[0] - 100) * 100 + oci_dat[1] - 100;
+					st.m = oci_dat[2];
+					st.d = oci_dat[3];
+					st.hh = oci_dat[4] - 1;
+					st.mm = oci_dat[5] - 1;
+					st.ss = oci_dat[6] - 1;
+					st.fr = 0;
+				}else if(SQL_OCI_DATETIME == used)
+				{
+					OCIDateTime *oci_dateTime = *(OCIDateTime **) buffer;
+					st.y = oci_dateTime->YYYY;
+					st.m = oci_dateTime->MM; 
+					st.d = oci_dateTime->DD;
+					st.hh = oci_dateTime->HH;
+					st.mm = oci_dateTime->MI;
+					st.ss = oci_dateTime->SS;
+					st.fr = oci_dateTime->fraction;
+					//st.zone = oci_dateTime->zone;
+				}else
+				{
+					TIMESTAMP_STRUCT *tss = (TIMESTAMP_STRUCT *) buffer;
+
+					st.m = tss->month;
+					st.d = tss->day;
+					st.y = tss->year;
+					st.hh = tss->hour;
+					st.mm = tss->minute;
+					st.ss = tss->second;
+					st.fr = tss->fraction;
+				}
 
 				MYLOG(0, "m=%d,d=%d,y=%d,hh=%d,mm=%d,ss=%d\n", st.m, st.d, st.y, st.hh, st.mm, st.ss);
 
 				break;
-
 			}
 		case SQL_C_NUMERIC:
 		{
