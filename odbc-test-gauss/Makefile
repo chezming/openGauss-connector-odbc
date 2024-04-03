@@ -48,6 +48,7 @@ ifndef cases
 		odbc_SQLGetStmtAttr \
 		odbc_SQLNumParams \
 		odbc_SQLSetDescField \
+		odbc_SQLSetCursorName \
 		odbc_SQLStatistics \
 		odbc_SQLTables \
 		odbc_stmt_timeout_01_pg_sleep \
