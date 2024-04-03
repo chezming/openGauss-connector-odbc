@@ -601,6 +601,7 @@ copyConnAttributes(ConnInfo *ci, const char *attribute, char *value)
 		STRCPY_FIXED(ci->username, value);
 	else if (stricmp(attribute, INI_PASSWORD) == 0 || stricmp(attribute, "pwd") == 0)
 	{
+		NULL_THE_NAME(ci->password);
 		ci->password = decode_or_remove_braces(value);
 #ifndef FORCE_PASSWORDE_DISPLAY
 		MYLOG(0, "key='%s' value='xxxxxxxx'\n", attribute);
@@ -945,6 +946,7 @@ MYLOG(0, "drivername=%s\n", drivername);
 
 	if (SQLGetPrivateProfileString(DSN, INI_PASSWORD, NULL_STRING, temp, sizeof(temp), ODBC_INI) > 0)
 	{
+		NULL_THE_NAME(ci->password);
 		ci->password = decode(temp);
 		if (strlen(temp))
 			memset(temp, 0, strlen(temp));
